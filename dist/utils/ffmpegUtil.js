@@ -16,23 +16,23 @@ const fluent_ffmpeg_1 = __importDefault(require("fluent-ffmpeg"));
 const path_1 = __importDefault(require("path"));
 const child_process_1 = require("child_process");
 const fs_1 = __importDefault(require("fs"));
+const logger_1 = require("./logger");
 class FFmpegUtil {
-    static convertFile(inputPath, outputPath, format, bitrate) {
+    static convertFile(inputPath, outputPath, format) {
         // Adjust extension for ALAC
-        if (format === 'alac') {
+        if (format.toLowerCase() === 'alac') {
             outputPath = path_1.default.join(path_1.default.dirname(outputPath), `${path_1.default.basename(outputPath, path_1.default.extname(outputPath))}.m4a`);
         }
         return new Promise((resolve, reject) => {
-            const command = (0, fluent_ffmpeg_1.default)(inputPath)
+            (0, fluent_ffmpeg_1.default)(inputPath)
                 .audioCodec(format)
-                .audioBitrate(bitrate)
                 .noVideo() // Disable video altogether
                 .output(outputPath)
                 .on('start', (commandLine) => {
-                console.log(`Spawned FFmpeg with command: ${commandLine}`);
+                logger_1.Logger.debug(`Spawned FFmpeg with command: ${commandLine}`);
             })
                 .on('stderr', (stderrLine) => {
-                console.log(`FFmpeg stderr: ${stderrLine}`);
+                logger_1.Logger.debug(`FFmpeg stderr: ${stderrLine}`);
             })
                 .on('end', () => __awaiter(this, void 0, void 0, function* () {
                 try {
@@ -44,13 +44,14 @@ class FFmpegUtil {
                     resolve();
                 }
                 catch (error) {
-                    reject(error);
+                    logger_1.Logger.debug('Missing cover art');
+                    resolve();
                 }
             }))
                 .on('error', (err, stdout, stderr) => {
-                console.error(`Error: ${err.message}`);
-                console.error(`FFmpeg stdout: ${stdout}`);
-                console.error(`FFmpeg stderr: ${stderr}`);
+                logger_1.Logger.error(`Error: ${err.message}`);
+                logger_1.Logger.error(`FFmpeg stdout: ${stdout}`);
+                logger_1.Logger.error(`FFmpeg stderr: ${stderr}`);
                 reject(err);
             })
                 .run();
@@ -58,15 +59,15 @@ class FFmpegUtil {
     }
     static extractCoverArt(inputPath) {
         const coverArtPath = path_1.default.join(path_1.default.dirname(inputPath), `${path_1.default.basename(inputPath, path_1.default.extname(inputPath))}_cover.jpg`);
-        return new Promise((resolve, reject) => {
-            const command = (0, fluent_ffmpeg_1.default)(inputPath)
-                .outputOptions('-map', '0:v', '-c', 'copy')
+        return new Promise((resolve) => {
+            (0, fluent_ffmpeg_1.default)(inputPath)
+                .outputOptions('-map', '0:v?', '-c', 'copy')
                 .output(coverArtPath)
                 .on('end', () => {
                 resolve(coverArtPath);
             })
                 .on('error', (err) => {
-                console.error(`Error extracting cover art: ${err.message}`);
+                logger_1.Logger.debug(`Error extracting cover art: ${err.message}`);
                 resolve(null); // Resolve with null if extraction fails
             })
                 .run();
@@ -77,13 +78,13 @@ class FFmpegUtil {
             const command = `atomicparsley "${outputPath}" --artwork "${coverArtPath}" --overWrite`;
             (0, child_process_1.exec)(command, (error, stdout, stderr) => {
                 if (error) {
-                    console.error(`Error injecting metadata: ${error.message}`);
-                    console.error(`AtomicParsley stdout: ${stdout}`);
-                    console.error(`AtomicParsley stderr: ${stderr}`);
+                    logger_1.Logger.error(`Error injecting metadata: ${error.message}`);
+                    logger_1.Logger.error(`AtomicParsley stdout: ${stdout}`);
+                    logger_1.Logger.error(`AtomicParsley stderr: ${stderr}`);
                     reject(error);
                 }
                 else {
-                    console.log(`Metadata injected for ${outputPath}`);
+                    logger_1.Logger.info(`Metadata injected for ${outputPath}`);
                     resolve();
                 }
             });

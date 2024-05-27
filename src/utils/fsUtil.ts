@@ -2,7 +2,9 @@ import fs from 'fs';
 import path from 'path';
 
 class FSUtil {
-  static async ensureDirectoryExists(directoryPath: string): Promise<string | undefined> {
+  static async ensureDirectoryExists(
+    directoryPath: string,
+  ): Promise<string | undefined> {
     return fs.promises.mkdir(directoryPath, { recursive: true });
   }
 
@@ -15,8 +17,10 @@ class FSUtil {
     }
   }
 
-  static async* getFilesRecursively(directory: string): AsyncGenerator<string> {
-    const dirEntries = await fs.promises.readdir(directory, { withFileTypes: true });
+  static async *getFilesRecursively(directory: string): AsyncGenerator<string> {
+    const dirEntries = await fs.promises.readdir(directory, {
+      withFileTypes: true,
+    });
     for (const dirEntry of dirEntries) {
       const res = path.resolve(directory, dirEntry.name);
       if (dirEntry.isDirectory()) {

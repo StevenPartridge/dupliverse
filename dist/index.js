@@ -25,8 +25,21 @@ const fsUtil_1 = __importDefault(require("./utils/fsUtil"));
 const path_1 = __importDefault(require("path"));
 const promises_1 = __importDefault(require("fs/promises"));
 const child_process_1 = require("child_process");
-const supportedFormats = ['mp3', 'aac', 'm4a', 'wav', 'aiff'];
-const audioExtensions = ['flac', 'wav', 'aiff', 'ogg', 'wma', 'alac', 'aac', 'mp3'];
+const logger_1 = require("./utils/logger");
+const supportedFormats = ['mp3', 'aac', 'm4a', 'aiff', 'wav'];
+const audioExtensions = [
+    'flac',
+    'wav',
+    'aiff',
+    'ogg',
+    'wma',
+    'alac',
+    'aac',
+    'mp3',
+    'm4a',
+];
+// Set the desired log level
+logger_1.Logger.setLevel(logger_1.OUTPUT_LEVEL.INFO);
 function checkToolInstalled(tool) {
     return new Promise((resolve) => {
         (0, child_process_1.exec)(`${tool} -version`, (error) => {
@@ -45,7 +58,7 @@ function checkRequiredTools() {
             }
         }
         if (missingTools.length > 0) {
-            console.error(`Missing required tools: ${missingTools.join(', ')}`);
+            logger_1.Logger.error(`Missing required tools: ${missingTools.join(', ')}`);
             process.exit(1);
         }
     });
@@ -64,52 +77,22 @@ function processFiles() {
                 const filePath = _c;
                 const ext = path_1.default.extname(filePath).toLowerCase().slice(1);
                 if (!audioExtensions.includes(ext)) {
-                    console.log(`Skipping non-audio file: ${filePath}`);
+                    logger_1.Logger.debug(`Skipping non-audio file: ${filePath}`);
                     continue;
                 }
                 allFiles.push(filePath);
                 const relativePath = path_1.default.relative(config_1.INPUT_FOLDER, filePath);
                 const outputDir = path_1.default.dirname(path_1.default.join(config_1.OUTPUT_FOLDER, relativePath));
                 let outputFilePath = path_1.default.join(outputDir, `${path_1.default.basename(relativePath, path_1.default.extname(relativePath))}.${config_1.TARGET_FORMAT}`);
-                // Skip conversion for supported formats and simply copy the file
                 if (supportedFormats.includes(ext)) {
                     outputFilePath = path_1.default.join(outputDir, path_1.default.basename(filePath));
-                    if (yield fsUtil_1.default.fileExists(outputFilePath)) {
-                        existingFiles.push(outputFilePath);
-                        console.log(`Skipping existing file: ${outputFilePath}`);
-                        continue;
-                    }
-                    filesToConvertOrCopy.push(filePath);
-                    yield fsUtil_1.default.ensureDirectoryExists(outputDir);
-                    try {
-                        console.log(`Copying ${filePath} to ${outputFilePath}`);
-                        yield promises_1.default.copyFile(filePath, outputFilePath);
-                        console.log(`Copied ${filePath} to ${outputFilePath}`);
-                    }
-                    catch (error) {
-                        console.error(`Error copying ${filePath}:`, error);
-                    }
-                    continue;
-                }
-                // Adjust extension for ALAC
-                if (config_1.TARGET_FORMAT === 'alac') {
-                    outputFilePath = path_1.default.join(path_1.default.dirname(outputFilePath), `${path_1.default.basename(outputFilePath, path_1.default.extname(outputFilePath))}.m4a`);
                 }
                 if (yield fsUtil_1.default.fileExists(outputFilePath)) {
                     existingFiles.push(outputFilePath);
-                    console.log(`Skipping existing file: ${outputFilePath}`);
+                    logger_1.Logger.debug(`Skipping already processed file: ${outputFilePath}`);
                     continue;
                 }
                 filesToConvertOrCopy.push(filePath);
-                yield fsUtil_1.default.ensureDirectoryExists(outputDir);
-                try {
-                    console.log(`Converting ${filePath} to ${outputFilePath}`);
-                    yield ffmpegUtil_1.default.convertFile(filePath, outputFilePath, config_1.TARGET_FORMAT, config_1.BITRATE);
-                    console.log(`Converted ${filePath} to ${outputFilePath}`);
-                }
-                catch (error) {
-                    console.error(`Error converting ${filePath}:`, error);
-                }
             }
         }
         catch (e_1_1) { e_1 = { error: e_1_1 }; }
@@ -119,9 +102,47 @@ function processFiles() {
             }
             finally { if (e_1) throw e_1.error; }
         }
-        console.log(`Total files found: ${allFiles.length}`);
-        console.log(`Files already exist: ${existingFiles.length}`);
-        console.log(`Files to convert or copy: ${filesToConvertOrCopy.length}`);
+        const totalFiles = filesToConvertOrCopy.length;
+        let processedCount = 0;
+        for (const filePath of filesToConvertOrCopy) {
+            const ext = path_1.default.extname(filePath).toLowerCase().slice(1);
+            const relativePath = path_1.default.relative(config_1.INPUT_FOLDER, filePath);
+            const outputDir = path_1.default.dirname(path_1.default.join(config_1.OUTPUT_FOLDER, relativePath));
+            let outputFilePath = path_1.default.join(outputDir, `${path_1.default.basename(relativePath, path_1.default.extname(relativePath))}.${config_1.TARGET_FORMAT}`);
+            if (supportedFormats.includes(ext)) {
+                outputFilePath = path_1.default.join(outputDir, path_1.default.basename(filePath));
+            }
+            else if (config_1.TARGET_FORMAT === 'alac') {
+                outputFilePath = path_1.default.join(path_1.default.dirname(outputFilePath), `${path_1.default.basename(outputFilePath, path_1.default.extname(outputFilePath))}.m4a`);
+            }
+            processedCount++;
+            if (yield fsUtil_1.default.fileExists(outputFilePath)) {
+                existingFiles.push(outputFilePath);
+                logger_1.Logger.info(`Skipping existing file: ${outputFilePath} (${processedCount}/${totalFiles})`);
+                continue;
+            }
+            yield fsUtil_1.default.ensureDirectoryExists(outputDir);
+            try {
+                logger_1.Logger.info(`Processing ${filePath} (${processedCount}/${totalFiles})`);
+                if (supportedFormats.includes(ext)) {
+                    logger_1.Logger.info(`Copying ${filePath} to ${outputFilePath}`);
+                    yield promises_1.default.copyFile(filePath, outputFilePath);
+                    logger_1.Logger.info(`Copied ${filePath} to ${outputFilePath}`);
+                }
+                else {
+                    logger_1.Logger.info(`Converting ${filePath} to ${outputFilePath}`);
+                    yield ffmpegUtil_1.default.convertFile(filePath, outputFilePath, config_1.TARGET_FORMAT);
+                    logger_1.Logger.info(`Converted ${filePath} to ${outputFilePath}`);
+                }
+            }
+            catch (error) {
+                logger_1.Logger.error(`Error processing ${filePath}:`, error);
+            }
+        }
+        logger_1.Logger.info(`Total files found: ${allFiles.length}`);
+        logger_1.Logger.info(`Files already exist: ${existingFiles.length}`);
+        logger_1.Logger.info(`Files to convert or copy: ${filesToConvertOrCopy.length}`);
+        logger_1.Logger.info(`Processed files: ${processedCount}`);
     });
 }
 processFiles();

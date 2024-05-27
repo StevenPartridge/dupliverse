@@ -2,25 +2,32 @@ import ffmpeg from 'fluent-ffmpeg';
 import path from 'path';
 import { exec } from 'child_process';
 import fs from 'fs';
+import { Logger } from './logger';
 
 class FFmpegUtil {
-  static convertFile(inputPath: string, outputPath: string, format: string, bitrate: string): Promise<void> {
+  static convertFile(
+    inputPath: string,
+    outputPath: string,
+    format: string,
+  ): Promise<void> {
     // Adjust extension for ALAC
-    if (format === 'alac') {
-      outputPath = path.join(path.dirname(outputPath), `${path.basename(outputPath, path.extname(outputPath))}.m4a`);
+    if (format.toLowerCase() === 'alac') {
+      outputPath = path.join(
+        path.dirname(outputPath),
+        `${path.basename(outputPath, path.extname(outputPath))}.m4a`,
+      );
     }
 
     return new Promise((resolve, reject) => {
-      const command = ffmpeg(inputPath)
+      ffmpeg(inputPath)
         .audioCodec(format)
-        .audioBitrate(bitrate)
         .noVideo() // Disable video altogether
         .output(outputPath)
         .on('start', (commandLine) => {
-          console.log(`Spawned FFmpeg with command: ${commandLine}`);
+          Logger.debug(`Spawned FFmpeg with command: ${commandLine}`);
         })
         .on('stderr', (stderrLine) => {
-          console.log(`FFmpeg stderr: ${stderrLine}`);
+          Logger.debug(`FFmpeg stderr: ${stderrLine}`);
         })
         .on('end', async () => {
           try {
@@ -31,13 +38,14 @@ class FFmpegUtil {
             }
             resolve();
           } catch (error) {
-            reject(error);
+            Logger.debug('Missing cover art');
+            resolve();
           }
         })
         .on('error', (err, stdout, stderr) => {
-          console.error(`Error: ${err.message}`);
-          console.error(`FFmpeg stdout: ${stdout}`);
-          console.error(`FFmpeg stderr: ${stderr}`);
+          Logger.error(`Error: ${err.message}`);
+          Logger.error(`FFmpeg stdout: ${stdout}`);
+          Logger.error(`FFmpeg stderr: ${stderr}`);
           reject(err);
         })
         .run();
@@ -45,35 +53,41 @@ class FFmpegUtil {
   }
 
   static extractCoverArt(inputPath: string): Promise<string | null> {
-    const coverArtPath = path.join(path.dirname(inputPath), `${path.basename(inputPath, path.extname(inputPath))}_cover.jpg`);
+    const coverArtPath = path.join(
+      path.dirname(inputPath),
+      `${path.basename(inputPath, path.extname(inputPath))}_cover.jpg`,
+    );
 
-    return new Promise((resolve, reject) => {
-      const command = ffmpeg(inputPath)
-        .outputOptions('-map', '0:v', '-c', 'copy')
+    return new Promise((resolve) => {
+      ffmpeg(inputPath)
+        .outputOptions('-map', '0:v?', '-c', 'copy')
         .output(coverArtPath)
         .on('end', () => {
           resolve(coverArtPath);
         })
         .on('error', (err) => {
-          console.error(`Error extracting cover art: ${err.message}`);
+          Logger.debug(`Error extracting cover art: ${err.message}`);
           resolve(null); // Resolve with null if extraction fails
         })
         .run();
     });
   }
 
-  static injectMetadata(outputPath: string, coverArtPath: string): Promise<void> {
+  static injectMetadata(
+    outputPath: string,
+    coverArtPath: string,
+  ): Promise<void> {
     return new Promise((resolve, reject) => {
       const command = `atomicparsley "${outputPath}" --artwork "${coverArtPath}" --overWrite`;
 
       exec(command, (error, stdout, stderr) => {
         if (error) {
-          console.error(`Error injecting metadata: ${error.message}`);
-          console.error(`AtomicParsley stdout: ${stdout}`);
-          console.error(`AtomicParsley stderr: ${stderr}`);
+          Logger.error(`Error injecting metadata: ${error.message}`);
+          Logger.error(`AtomicParsley stdout: ${stdout}`);
+          Logger.error(`AtomicParsley stderr: ${stderr}`);
           reject(error);
         } else {
-          console.log(`Metadata injected for ${outputPath}`);
+          Logger.info(`Metadata injected for ${outputPath}`);
           resolve();
         }
       });

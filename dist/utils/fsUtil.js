@@ -58,7 +58,9 @@ class FSUtil {
     }
     static getFilesRecursively(directory) {
         return __asyncGenerator(this, arguments, function* getFilesRecursively_1() {
-            const dirEntries = yield __await(fs_1.default.promises.readdir(directory, { withFileTypes: true }));
+            const dirEntries = yield __await(fs_1.default.promises.readdir(directory, {
+                withFileTypes: true,
+            }));
             for (const dirEntry of dirEntries) {
                 const res = path_1.default.resolve(directory, dirEntry.name);
                 if (dirEntry.isDirectory()) {
