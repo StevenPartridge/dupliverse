@@ -72,5 +72,53 @@ class FSUtil {
             }
         });
     }
+    static countFiles(directory) {
+        return __awaiter(this, void 0, void 0, function* () {
+            var _a, e_1, _b, _c;
+            let count = 0;
+            try {
+                for (var _d = true, _e = __asyncValues(FSUtil.getFilesRecursively(directory)), _f; _f = yield _e.next(), _a = _f.done, !_a; _d = true) {
+                    _c = _f.value;
+                    _d = false;
+                    const _ = _c;
+                    count++;
+                }
+            }
+            catch (e_1_1) { e_1 = { error: e_1_1 }; }
+            finally {
+                try {
+                    if (!_d && !_a && (_b = _e.return)) yield _b.call(_e);
+                }
+                finally { if (e_1) throw e_1.error; }
+            }
+            return count;
+        });
+    }
+    static countFilesByExtensions(directory, extensions) {
+        return __awaiter(this, void 0, void 0, function* () {
+            var _a, e_2, _b, _c;
+            let count = 0;
+            const extensionsSet = new Set(extensions.map((ext) => ext.toLowerCase()));
+            try {
+                for (var _d = true, _e = __asyncValues(FSUtil.getFilesRecursively(directory)), _f; _f = yield _e.next(), _a = _f.done, !_a; _d = true) {
+                    _c = _f.value;
+                    _d = false;
+                    const filePath = _c;
+                    // slice(1) here assumes the extension starts with a dot
+                    if (extensionsSet.has(path_1.default.extname(filePath).toLowerCase().slice(1))) {
+                        count++;
+                    }
+                }
+            }
+            catch (e_2_1) { e_2 = { error: e_2_1 }; }
+            finally {
+                try {
+                    if (!_d && !_a && (_b = _e.return)) yield _b.call(_e);
+                }
+                finally { if (e_2) throw e_2.error; }
+            }
+            return count;
+        });
+    }
 }
 exports.default = FSUtil;

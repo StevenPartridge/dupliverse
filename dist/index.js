@@ -67,6 +67,21 @@ function processFiles() {
     return __awaiter(this, void 0, void 0, function* () {
         var _a, e_1, _b, _c;
         yield checkRequiredTools();
+        const originCount = yield fsUtil_1.default.countFiles(config_1.INPUT_FOLDER);
+        const targetCount = yield fsUtil_1.default.countFiles(config_1.OUTPUT_FOLDER);
+        const flacCount = yield fsUtil_1.default.countFilesByExtensions(config_1.INPUT_FOLDER, audioExtensions.filter((ext) => !supportedFormats.includes(ext)));
+        const mp3Count = yield fsUtil_1.default.countFilesByExtensions(config_1.INPUT_FOLDER, supportedFormats);
+        logger_1.Logger.info(`Origin has ${originCount} files.`);
+        logger_1.Logger.info(`Target already has ${targetCount} files.`);
+        logger_1.Logger.info(`Origin has ${flacCount} unsupported files to convert.`);
+        logger_1.Logger.info(`Origin has ${mp3Count} supported files to copy.`);
+        logger_1.Logger.info('Press Enter to continue or Ctrl+C to exit.');
+        yield new Promise((resolve) => {
+            process.stdin.once('data', () => {
+                process.stdin.pause();
+                resolve();
+            });
+        });
         const allFiles = [];
         const existingFiles = [];
         const filesToConvertOrCopy = [];

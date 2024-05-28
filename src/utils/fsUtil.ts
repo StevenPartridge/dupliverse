@@ -30,6 +30,29 @@ class FSUtil {
       }
     }
   }
+
+  static async countFiles(directory: string): Promise<number> {
+    let count = 0;
+    for await (const _ of FSUtil.getFilesRecursively(directory)) {
+      count++;
+    }
+    return count;
+  }
+
+  static async countFilesByExtensions(
+    directory: string,
+    extensions: string[],
+  ): Promise<number> {
+    let count = 0;
+    const extensionsSet = new Set(extensions.map((ext) => ext.toLowerCase()));
+    for await (const filePath of FSUtil.getFilesRecursively(directory)) {
+      // slice(1) here assumes the extension starts with a dot
+      if (extensionsSet.has(path.extname(filePath).toLowerCase().slice(1))) {
+        count++;
+      }
+    }
+    return count;
+  }
 }
 
 export default FSUtil;

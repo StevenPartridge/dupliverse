@@ -50,6 +50,30 @@ async function checkRequiredTools(): Promise<void> {
 async function processFiles() {
   await checkRequiredTools();
 
+  const originCount = await FSUtil.countFiles(INPUT_FOLDER);
+  const targetCount = await FSUtil.countFiles(OUTPUT_FOLDER);
+  const flacCount = await FSUtil.countFilesByExtensions(
+    INPUT_FOLDER,
+    audioExtensions.filter((ext) => !supportedFormats.includes(ext)),
+  );
+  const mp3Count = await FSUtil.countFilesByExtensions(
+    INPUT_FOLDER,
+    supportedFormats,
+  );
+
+  Logger.info(`Origin has ${originCount} files.`);
+  Logger.info(`Target already has ${targetCount} files.`);
+  Logger.info(`Origin has ${flacCount} unsupported files to convert.`);
+  Logger.info(`Origin has ${mp3Count} supported files to copy.`);
+
+  Logger.info('Press Enter to continue or Ctrl+C to exit.');
+  await new Promise<void>((resolve) => {
+    process.stdin.once('data', () => {
+      process.stdin.pause();
+      resolve();
+    });
+  });
+
   const allFiles: string[] = [];
   const existingFiles: string[] = [];
   const filesToConvertOrCopy: string[] = [];
@@ -130,9 +154,7 @@ async function processFiles() {
   }
 
   Logger.info(`Total files found: ${allFiles.length}`);
-  Logger.info(`Files already exist: ${existingFiles.length}`);
-  Logger.info(`Files to convert or copy: ${filesToConvertOrCopy.length}`);
-  Logger.info(`Processed files: ${processedCount}`);
+  Logger.info(`Files that already existed: ${existingFiles.length}`);
 }
 
 processFiles();
