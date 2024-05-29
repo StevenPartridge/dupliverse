@@ -1,14 +1,12 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.OUTPUT_LEVEL = exports.Logger = void 0;
 var OUTPUT_LEVEL;
 (function (OUTPUT_LEVEL) {
     OUTPUT_LEVEL[OUTPUT_LEVEL["NONE"] = 0] = "NONE";
     OUTPUT_LEVEL[OUTPUT_LEVEL["ERROR"] = 1] = "ERROR";
     OUTPUT_LEVEL[OUTPUT_LEVEL["INFO"] = 2] = "INFO";
     OUTPUT_LEVEL[OUTPUT_LEVEL["DEBUG"] = 3] = "DEBUG";
-})(OUTPUT_LEVEL || (exports.OUTPUT_LEVEL = OUTPUT_LEVEL = {}));
+})(OUTPUT_LEVEL || (OUTPUT_LEVEL = {}));
 class Logger {
+    static currentLevel = OUTPUT_LEVEL.INFO;
     static setLevel(level) {
         Logger.currentLevel = level;
     }
@@ -31,5 +29,4 @@ class Logger {
         console.log(message, ...optionalParams);
     }
 }
-exports.Logger = Logger;
-Logger.currentLevel = OUTPUT_LEVEL.INFO;
+export { Logger, OUTPUT_LEVEL };
