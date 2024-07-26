@@ -14,7 +14,7 @@ class FFmpegUtil {
   static async updateFileInPlace(
     inputPath: string,
     format: string,
-    targetBitrate: number,
+    targetBitrate: string,
   ): Promise<void> {
     const tempOutputPath = `${inputPath}.tmp`;
 
@@ -32,7 +32,7 @@ class FFmpegUtil {
     inputPath: string,
     outputPath: string,
     format: string,
-    bitrate: number,
+    bitrate: string,
   ): Promise<void> {
     const codec = this.getCodecForFormat(format);
 
@@ -150,8 +150,10 @@ class FFmpegUtil {
   }
 
   static isAtomicParsleySupported(format: string): boolean {
-    const supportedFormats = ['mp4', 'm4a'];
-    return supportedFormats.includes(format.toLowerCase());
+    return (
+      format.toLowerCase().includes('mp4') ||
+      format.toLowerCase().includes('m4a')
+    );
   }
 
   static getFileInformation(filePath: string): Promise<FileInfo | null> {
@@ -163,7 +165,9 @@ class FFmpegUtil {
           const format = metadata.format.format_name;
           const bitrate = (metadata.format.bit_rate || 0) / 1000; // Convert to kbps
           const isLossy =
-            !format?.includes('flac') && !format?.includes('alac');
+            !format?.includes('flac') &&
+            !format?.includes('alac') &&
+            !format?.includes('mp4');
 
           resolve({
             format: format || 'unknown',

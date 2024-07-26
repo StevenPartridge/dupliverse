@@ -1,4 +1,4 @@
-import { INPUT_FOLDER, OUTPUT_FOLDER, TARGET_FORMAT } from './config.js';
+import { INPUT_FOLDER, OUTPUT_FOLDER } from './config.js';
 import FFmpegUtil from './utils/ffmpegUtil.js';
 import FSUtil from './utils/fsUtil.js';
 import path from 'path';
@@ -46,9 +46,9 @@ async function processFiles() {
         allFiles.push(filePath);
         const relativePath = path.relative(INPUT_FOLDER, filePath);
         const outputDir = path.dirname(path.join(OUTPUT_FOLDER, relativePath));
-        let outputFilePath = path.join(outputDir, `${path.basename(relativePath, path.extname(relativePath))}.${TARGET_FORMAT}`);
-        if (supportedFormats.includes(ext)) {
-            outputFilePath = path.join(outputDir, path.basename(filePath));
+        let outputFilePath = path.join(outputDir, path.basename(filePath));
+        if (!supportedFormats.includes(ext)) {
+            outputFilePath = path.join(outputDir, `${path.basename(filePath, path.extname(filePath))}.m4a`);
         }
         if (await FSUtil.fileExists(outputFilePath)) {
             existingFiles.push(outputFilePath);
@@ -64,21 +64,22 @@ async function processFiles() {
         const ext = path.extname(filePath).toLowerCase().slice(1);
         const relativePath = path.relative(INPUT_FOLDER, filePath);
         const outputDir = path.dirname(path.join(OUTPUT_FOLDER, relativePath));
-        let outputFilePath = path.join(outputDir, `${path.basename(relativePath, path.extname(relativePath))}.${TARGET_FORMAT}`);
+        let outputFilePath = path.join(outputDir, path.basename(filePath));
         const inputFileInformation = await FFmpegUtil.getFileInformation(filePath);
         const outputFileInformation = await FFmpegUtil.getFileInformation(outputFilePath);
         if (!inputFileInformation) {
             UserInteractionUtil.logError(`Could not get information for ${filePath}`);
             continue;
         }
-        if (supportedFormats.includes(ext)) {
-            outputFilePath = path.join(outputDir, path.basename(filePath));
-        }
-        else if (!inputFileInformation.isLossy) {
-            outputFilePath = path.join(path.dirname(outputFilePath), `${path.basename(outputFilePath, path.extname(outputFilePath))}.m4a`);
-        }
-        else {
-            outputFilePath = path.join(path.dirname(outputFilePath), `${path.basename(outputFilePath, path.extname(outputFilePath))}.mp3`);
+        console.log(ext);
+        console.log(inputFileInformation);
+        if (!supportedFormats.includes(ext)) {
+            if (!inputFileInformation.isLossy) {
+                outputFilePath = path.join(outputDir, `${path.basename(filePath, path.extname(filePath))}.m4a`);
+            }
+            else {
+                outputFilePath = path.join(outputDir, `${path.basename(filePath, path.extname(filePath))}.mp3`);
+            }
         }
         // To update the progress bar
         processedCount++;
@@ -87,12 +88,12 @@ async function processFiles() {
             let didUpdate = false;
             if (outputFileInformation.isLossy &&
                 outputFileInformation.bitrate > MAX_LOSSY_BITRATE) {
-                await FFmpegUtil.updateFileInPlace(outputFilePath, outputFileInformation.format, MAX_LOSSY_BITRATE);
+                await FFmpegUtil.updateFileInPlace(outputFilePath, 'mp3', '320k');
                 didUpdate = true;
             }
             else if (!outputFileInformation.isLossy &&
                 outputFileInformation.bitrate > MAX_LOSSLESS_BITRATE) {
-                await FFmpegUtil.updateFileInPlace(outputFilePath, outputFileInformation.format, MAX_LOSSLESS_BITRATE);
+                await FFmpegUtil.updateFileInPlace(outputFilePath, 'm4a', '320k');
                 didUpdate = true;
             }
             existingFiles.push(outputFilePath);
@@ -107,14 +108,14 @@ async function processFiles() {
         await FSUtil.ensureDirectoryExists(outputDir);
         try {
             UserInteractionUtil.logInfo(`Processing ${filePath} (${processedCount}/${totalFiles})`);
-            if (supportedFormats.includes(inputFileInformation.format)) {
+            if (supportedFormats.includes(ext)) {
                 if (inputFileInformation.isLossy &&
                     inputFileInformation.bitrate > MAX_LOSSY_BITRATE) {
-                    await FFmpegUtil.convertFile(filePath, outputFilePath, 'mp3', MAX_LOSSY_BITRATE);
+                    await FFmpegUtil.convertFile(filePath, outputFilePath, 'mp3', '320k');
                 }
                 else if (!inputFileInformation.isLossy &&
                     inputFileInformation.bitrate > MAX_LOSSLESS_BITRATE) {
-                    await FFmpegUtil.convertFile(filePath, outputFilePath, 'alac', MAX_LOSSLESS_BITRATE);
+                    await FFmpegUtil.convertFile(filePath, outputFilePath, 'alac', '1411k');
                 }
                 else {
                     UserInteractionUtil.logInfo(`Copying ${filePath} to ${outputFilePath}`);
@@ -131,6 +132,7 @@ async function processFiles() {
     UserInteractionUtil.stopProgressBar();
     UserInteractionUtil.logInfo(`Total files found: ${allFiles.length}`);
     UserInteractionUtil.logInfo(`Files that already existed: ${existingFiles.length}`);
-    // UserInteractionUtil.printLogs();
+    UserInteractionUtil.clearOutput();
+    UserInteractionUtil.printLogs();
 }
 processFiles();

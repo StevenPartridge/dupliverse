@@ -116,8 +116,8 @@ class FFmpegUtil {
         }
     }
     static isAtomicParsleySupported(format) {
-        const supportedFormats = ['mp4', 'm4a'];
-        return supportedFormats.includes(format.toLowerCase());
+        return (format.toLowerCase().includes('mp4') ||
+            format.toLowerCase().includes('m4a'));
     }
     static getFileInformation(filePath) {
         return new Promise((resolve, reject) => {
@@ -128,7 +128,9 @@ class FFmpegUtil {
                 else {
                     const format = metadata.format.format_name;
                     const bitrate = (metadata.format.bit_rate || 0) / 1000; // Convert to kbps
-                    const isLossy = !format?.includes('flac') && !format?.includes('alac');
+                    const isLossy = !format?.includes('flac') &&
+                        !format?.includes('alac') &&
+                        !format?.includes('mp4');
                     resolve({
                         format: format || 'unknown',
                         bitrate,
