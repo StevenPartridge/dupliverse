@@ -3,6 +3,15 @@ import path from 'path';
 import { exec } from 'child_process';
 import fs from 'fs';
 import { Logger } from './logger.js';
+import smb2 from 'smb2';
+import { promisify } from 'util';
+const smb2Client = new smb2({
+    share: '\\\\192.168.1.20\\server4tb',
+    domain: '',
+    username: '',
+    password: '',
+});
+const smbReadFile = promisify(smb2Client.readFile.bind(smb2Client));
 class FFmpegUtil {
     static async updateFileInPlace(inputPath, format, targetBitrate) {
         const tempOutputPath = `${inputPath}.tmp`;
@@ -16,10 +25,15 @@ class FFmpegUtil {
             throw error;
         }
     }
-    static convertFile(inputPath, outputPath, format, bitrate) {
+    static async convertFile(inputPath, outputPath, format, bitrate) {
         const codec = this.getCodecForFormat(format);
         if (format.toLowerCase() === 'alac') {
             outputPath = path.join(path.dirname(outputPath), `${path.basename(outputPath, path.extname(outputPath))}.m4a`);
+        }
+        let tempInputPath = null;
+        if (inputPath.startsWith('smb://')) {
+            tempInputPath = await this.downloadFromSMB(inputPath);
+            inputPath = tempInputPath;
         }
         return new Promise((resolve, reject) => {
             ffmpeg(inputPath)
@@ -40,10 +54,16 @@ class FFmpegUtil {
                         await FFmpegUtil.injectMetadata(outputPath, coverArtPath);
                         fs.unlinkSync(coverArtPath);
                     }
+                    if (tempInputPath) {
+                        fs.unlinkSync(tempInputPath); // Clean up temporary input file
+                    }
                     resolve();
                 }
                 catch (error) {
                     Logger.debug('Missing cover art');
+                    if (tempInputPath) {
+                        fs.unlinkSync(tempInputPath); // Clean up temporary input file
+                    }
                     resolve();
                 }
             })
@@ -51,6 +71,9 @@ class FFmpegUtil {
                 Logger.error(`Error: ${err.message}`);
                 Logger.error(`FFmpeg stdout: ${stdout}`);
                 Logger.error(`FFmpeg stderr: ${stderr}`);
+                if (tempInputPath) {
+                    fs.unlinkSync(tempInputPath); // Clean up temporary input file
+                }
                 reject(err);
             })
                 .run();
@@ -145,5 +168,12 @@ class FFmpegUtil {
             return null;
         });
     }
+    static async downloadFromSMB(smbPath) {
+        const localTempPath = path.join('/tmp', path.basename(smbPath));
+        const fileBuffer = await smbReadFile(smbPath);
+        await fs.promises.writeFile(localTempPath, fileBuffer);
+        return localTempPath;
+    }
 }
 export default FFmpegUtil;
+//# sourceMappingURL=ffmpegUtil.js.map

@@ -30,3 +30,4 @@ class Logger {
     }
 }
 export { Logger, OUTPUT_LEVEL };
+//# sourceMappingURL=logger.js.map

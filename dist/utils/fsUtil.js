@@ -1,8 +1,16 @@
 import fs from 'fs';
 import path from 'path';
+import smb2 from 'smb2';
+import { promisify } from 'util';
+const smb2Client = new smb2({
+    share: '\\\\192.168.1.20\\server4tb',
+    domain: '',
+    username: '',
+    password: '',
+});
 class FSUtil {
     static async ensureDirectoryExists(directoryPath) {
-        return fs.promises.mkdir(directoryPath, { recursive: true });
+        await fs.promises.mkdir(directoryPath, { recursive: true });
     }
     static async fileExists(filePath) {
         try {
@@ -14,36 +22,63 @@ class FSUtil {
         }
     }
     static async *getFilesRecursively(directory) {
-        const dirEntries = await fs.promises.readdir(directory, {
-            withFileTypes: true,
-        });
-        for (const dirEntry of dirEntries) {
-            const res = path.resolve(directory, dirEntry.name);
-            if (dirEntry.isDirectory()) {
-                yield* FSUtil.getFilesRecursively(res);
+        if (directory.startsWith('smb://')) {
+            yield* FSUtil.getFilesRecursivelyFromSMB(directory);
+        }
+        else {
+            const dirEntries = await fs.promises.readdir(directory, {
+                withFileTypes: true,
+            });
+            for (const dirEntry of dirEntries) {
+                const res = path.resolve(directory, dirEntry.name);
+                if (dirEntry.isDirectory()) {
+                    yield* FSUtil.getFilesRecursively(res);
+                }
+                else {
+                    yield res;
+                }
             }
-            else {
-                yield res;
+        }
+    }
+    static async *getFilesRecursivelyFromSMB(directory) {
+        const smbPath = directory.replace('smb://', '').replace(/\//g, '\\');
+        console.log(`Accessing SMB Path: ${smbPath}`); // Debugging output
+        const smbList = promisify(smb2Client.readdir.bind(smb2Client));
+        try {
+            const dirEntries = await smbList(smbPath);
+            for (const dirEntry of dirEntries) {
+                const res = path.join(directory, dirEntry).replace('smb:/', '');
+                if (await FSUtil.isDirectorySMB(res)) {
+                    yield* FSUtil.getFilesRecursivelyFromSMB(res);
+                }
+                else {
+                    yield res;
+                }
             }
+        }
+        catch (error) {
+            console.error(`Error accessing SMB path: ${smbPath}`, error); // Debugging output
+            throw error;
+        }
+    }
+    static async isDirectorySMB(smbPath) {
+        const smbList = promisify(smb2Client.readdir.bind(smb2Client));
+        try {
+            await smbList(smbPath.replace('smb://', '').replace(/\//g, '\\'));
+            return true;
+        }
+        catch {
+            return false;
         }
     }
     static async countFiles(directory) {
         let count = 0;
-        for await (const _ of FSUtil.getFilesRecursively(directory)) {
-            count++;
-        }
-        return count;
-    }
-    static async countFilesByExtensions(directory, extensions) {
-        let count = 0;
-        const extensionsSet = new Set(extensions.map((ext) => ext.toLowerCase()));
         for await (const filePath of FSUtil.getFilesRecursively(directory)) {
-            // slice(1) here assumes the extension starts with a dot
-            if (extensionsSet.has(path.extname(filePath).toLowerCase().slice(1))) {
-                count++;
-            }
+            console.log(`Counting file: ${filePath}`); // Debugging output
+            count++;
         }
         return count;
     }
 }
 export default FSUtil;
+//# sourceMappingURL=fsUtil.js.map
