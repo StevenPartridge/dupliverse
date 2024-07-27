@@ -3,7 +3,6 @@ import FSUtil from './utils/fsUtil.js';
 import path from 'path';
 import { Logger, OUTPUT_LEVEL } from './utils/logger.js';
 import UserInteractionUtil from './utils/userInput.js';
-import ToolUtil from './utils/toolUtil.js';
 const audioExtensions = [
     'flac',
     'wav',
@@ -20,7 +19,6 @@ Logger.setLevel(OUTPUT_LEVEL.INFO);
 // Add dry run mode
 const DRY_RUN = false;
 async function processFiles() {
-    await ToolUtil.checkRequiredTools(['ffmpeg', 'atomicparsley']);
     let originCount = 0;
     const targetCount = await FSUtil.countFiles(OUTPUT_FOLDER);
     let existingCount = 0;
@@ -35,11 +33,8 @@ async function processFiles() {
         }
         originCount++;
         const relativePath = path.relative(INPUT_FOLDER, filePath);
-        const outputDir = path.join(OUTPUT_FOLDER, path.dirname(relativePath.replace('../../TestMusic/', '')));
+        const outputDir = path.join(OUTPUT_FOLDER, path.dirname(relativePath));
         const outputFilePath = path.join(outputDir, path.basename(filePath));
-        console.log(OUTPUT_FOLDER, relativePath);
-        console.log(outputDir);
-        console.log(outputFilePath);
         if (await FSUtil.fileExists(outputFilePath)) {
             existingCount++;
             UserInteractionUtil.logDebug(`Skipping already processed file: ${outputFilePath}`);
@@ -61,7 +56,7 @@ async function processFiles() {
     let processedCount = 0;
     for (const filePath of filesToCopy) {
         const relativePath = path.relative(INPUT_FOLDER, filePath);
-        const outputDir = path.join(OUTPUT_FOLDER, path.dirname(relativePath.replace('../../TestMusic/', '')));
+        const outputDir = path.join(OUTPUT_FOLDER, path.dirname(relativePath));
         const outputFilePath = path.join(outputDir, path.basename(filePath));
         console.log(OUTPUT_FOLDER, relativePath);
         console.log(outputDir);

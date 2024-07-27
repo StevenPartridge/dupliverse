@@ -24,7 +24,6 @@ Logger.setLevel(OUTPUT_LEVEL.INFO);
 const DRY_RUN = false;
 
 async function processFiles() {
-  await ToolUtil.checkRequiredTools(['ffmpeg', 'atomicparsley']);
 
   let originCount = 0;
   const targetCount = await FSUtil.countFiles(OUTPUT_FOLDER);
@@ -46,12 +45,9 @@ async function processFiles() {
     const relativePath = path.relative(INPUT_FOLDER, filePath);
     const outputDir = path.join(
       OUTPUT_FOLDER,
-      path.dirname(relativePath.replace('../../TestMusic/', '')),
+      path.dirname(relativePath),
     );
     const outputFilePath = path.join(outputDir, path.basename(filePath));
-    console.log(OUTPUT_FOLDER, relativePath);
-    console.log(outputDir);
-    console.log(outputFilePath);
 
     if (await FSUtil.fileExists(outputFilePath)) {
       existingCount++;
@@ -85,7 +81,7 @@ async function processFiles() {
     const relativePath = path.relative(INPUT_FOLDER, filePath);
     const outputDir = path.join(
       OUTPUT_FOLDER,
-      path.dirname(relativePath.replace('../../TestMusic/', '')),
+      path.dirname(relativePath),
     );
     const outputFilePath = path.join(outputDir, path.basename(filePath));
     console.log(OUTPUT_FOLDER, relativePath);
