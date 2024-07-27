@@ -79,6 +79,41 @@ class FSUtil {
         }
         return count;
     }
+    static async copyFile(inputPath, outputPath) {
+        let tempInputPath = null;
+        if (inputPath.startsWith('TestMusic/')) {
+            tempInputPath = await this.downloadFromSMB(inputPath);
+            inputPath = tempInputPath;
+        }
+        return new Promise((resolve, reject) => {
+            fs.copyFile(inputPath, outputPath, (err) => {
+                if (tempInputPath) {
+                    fs.unlinkSync(tempInputPath); // Clean up temporary input file
+                }
+                if (err) {
+                    console.error(`Error copying file: ${err.message}`);
+                    reject(err);
+                }
+                else {
+                    console.log(`Copied file from ${inputPath} to ${outputPath}`);
+                    resolve();
+                }
+            });
+        });
+    }
+    static async downloadFromSMB(smbPath) {
+        const smbDownload = promisify(smb2Client.readFile.bind(smb2Client));
+        const localTempPath = path.join('/tmp', path.basename(smbPath));
+        try {
+            const data = await smbDownload(smbPath.replace('smb://', '').replace(/\//g, '\\'));
+            await fs.promises.writeFile(localTempPath, data);
+            return localTempPath;
+        }
+        catch (error) {
+            console.error(`Error downloading SMB file: ${error.message}`);
+            throw error;
+        }
+    }
 }
 export default FSUtil;
 //# sourceMappingURL=fsUtil.js.map

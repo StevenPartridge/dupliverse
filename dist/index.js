@@ -1,7 +1,6 @@
 import { INPUT_FOLDER, OUTPUT_FOLDER } from './config.js';
 import FSUtil from './utils/fsUtil.js';
 import path from 'path';
-import fs from 'fs/promises';
 import { Logger, OUTPUT_LEVEL } from './utils/logger.js';
 import UserInteractionUtil from './utils/userInput.js';
 import ToolUtil from './utils/toolUtil.js';
@@ -36,7 +35,7 @@ async function processFiles() {
         }
         originCount++;
         const relativePath = path.relative(INPUT_FOLDER, filePath);
-        const outputDir = path.join(OUTPUT_FOLDER, path.dirname(relativePath.replace('../../LidarrMusic/', '')));
+        const outputDir = path.join(OUTPUT_FOLDER, path.dirname(relativePath.replace('../../TestMusic/', '')));
         const outputFilePath = path.join(outputDir, path.basename(filePath));
         console.log(OUTPUT_FOLDER, relativePath);
         console.log(outputDir);
@@ -62,7 +61,7 @@ async function processFiles() {
     let processedCount = 0;
     for (const filePath of filesToCopy) {
         const relativePath = path.relative(INPUT_FOLDER, filePath);
-        const outputDir = path.join(OUTPUT_FOLDER, path.dirname(relativePath.replace('../../LidarrMusic/', '')));
+        const outputDir = path.join(OUTPUT_FOLDER, path.dirname(relativePath.replace('../../TestMusic/', '')));
         const outputFilePath = path.join(outputDir, path.basename(filePath));
         console.log(OUTPUT_FOLDER, relativePath);
         console.log(outputDir);
@@ -72,7 +71,7 @@ async function processFiles() {
         await FSUtil.ensureDirectoryExists(outputDir);
         try {
             UserInteractionUtil.logInfo(`Copying ${filePath} to ${outputFilePath} (${processedCount}/${totalFiles})`);
-            await fs.copyFile(filePath, outputFilePath);
+            await FSUtil.copyFile(filePath, outputFilePath);
             UserInteractionUtil.logInfo(`Copied ${filePath} to ${outputFilePath}`);
         }
         catch (error) {
